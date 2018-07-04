@@ -1,7 +1,6 @@
 from collections import namedtuple
 import math
 
-Point = namedtuple('Point', 'x y')
 
 class Dimension:
     def __init__(self, width, height):
@@ -56,6 +55,11 @@ Direction.SE = Direction(1)
 Direction.SW = Direction(2)
 Direction.NW = Direction(3)
 
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
 class Atom:
     def __init__(self, position, direction, bounced = False):
         self.position = position
@@ -72,19 +76,30 @@ board = [[1 for y in range(gameDimensions.height)] for x in range(gameDimensions
 
 screenSize = Dimension(gameDimensions.width * gridSize + margin * 2, gameDimensions.height * gridSize + margin * 2)
 
+
 def setup():
     global atoms
+
+    positions = []
 
     println("Screen: " + str(screenSize.width) + ", " + str(screenSize.height))
     size(screenSize.width, screenSize.height, P3D)
     
     for i in range(level + 1):
-        pos = Point(int(random(gameDimensions.width)), int(random(gameDimensions.height)))
+        pos = getNewPos(positions)
+        positions.append(pos)
         dir = Direction(int(random(4)))
-        # TODO: make sure two atoms aren't in exactly the same position
         atoms.append(Atom(pos, dir))
 
 speed = 0.05
+
+
+def getNewPos(positions):
+    while True:
+        pos = Point(int(random(gameDimensions.width)), int(random(gameDimensions.height)))
+        if pos in positions:
+            continue
+        return pos
 
 def bounceAtom(atom):
     bounceRight = atom.position.x > gameDimensions.width
@@ -122,16 +137,21 @@ def distance(pos1, pos2):
 moving = True
 
 def mouseClicked():
-    global atoms
+    if mouseButton == LEFT:
+        global atoms
+
+        positions = []
+
+        atoms = []
+
+        for i in range(level + 1):
+            pos = getNewPos(positions)
+            positions.append(pos)
+            dir = Direction(int(random(4)))
+            atoms.append(Atom(pos, dir))
     
-    atoms = []
-    
-    for i in range(level + 1):
-        pos = Point(int(random(gameDimensions.width)), int(random(gameDimensions.height)))
-        dir = Direction(int(random(4)))
-        # TODO: make sure two atoms aren't in exactly the same position
-        atoms.append(Atom(pos, dir))
-    
+    if mouseButton == RIGHT:
+        pass
 
 def draw():
     global atoms
@@ -213,8 +233,12 @@ def draw():
     lights()
     translate(margin, margin, 0)
     position = Point(0, 0)
+    atomNum = 0
     for atom in atoms:
         newPosition = Point(atom.position.x * gridSize, atom.position.y * gridSize)
         translate(newPosition.x - position.x,  newPosition.y - position.y, 0)
         position = newPosition
         sphere(gridSize) # / 2.0
+        textSize(32)
+        text(str(atomNum), 32, 24)
+        atomNum += 1
