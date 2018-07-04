@@ -59,6 +59,11 @@ class Point:
         self.x = x
         self.y = y
 
+    def __eq__(self, other):
+        if isinstance(other, Point):
+            return self.x == other.x and self.y == other.y
+        return 0
+
 class Atom:
     def __init__(self, position, direction, bounced = False):
         self.position = position
