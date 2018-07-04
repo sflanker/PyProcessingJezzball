@@ -6,13 +6,13 @@ class Dimension:
         self.width = int(width)
         self.height = int(height)
 
-class Direction:
+class BallDirection:
     def __init__(self, value):
         self.value = value
         
     def __eq__(self, other):
         """Overrides the default implementation"""
-        if isinstance(other, Direction):
+        if isinstance(other, BallDirection):
             return self.value == other.value
         return False
 
@@ -21,38 +21,38 @@ class Direction:
     
     def opposite(self):
         if self.value == 0:
-            return Direction.SW
+            return BallDirection.SW
         elif self.value == 1:
-            return Direction.NW
+            return BallDirection.NW
         elif self.value == 2:
-            return Direction.NE
+            return BallDirection.NE
         elif self.value == 3:
-            return Direction.SE
+            return BallDirection.SE
         
     def flipVertical(self):
         if self.value == 0:
-            return Direction.SE
+            return BallDirection.SE
         elif self.value == 1:
-            return Direction.NE
+            return BallDirection.NE
         elif self.value == 2:
-            return Direction.NW
+            return BallDirection.NW
         elif self.value == 3:
-            return Direction.SW
+            return BallDirection.SW
         
     def flipHorizontal(self):
         if self.value == 0:
-            return Direction.NW
+            return BallDirection.NW
         elif self.value == 1:
-            return Direction.SW
+            return BallDirection.SW
         elif self.value == 2:
-            return Direction.SE
+            return BallDirection.SE
         elif self.value == 3:
-            return Direction.NE
+            return BallDirection.NE
         
-Direction.NE = Direction(0)
-Direction.SE = Direction(1)
-Direction.SW = Direction(2)
-Direction.NW = Direction(3)
+BallDirection.NE = BallDirection(0)
+BallDirection.SE = BallDirection(1)
+BallDirection.SW = BallDirection(2)
+BallDirection.NW = BallDirection(3)
 
 class Point:
     def __init__(self, x, y):
@@ -70,6 +70,32 @@ class Atom:
         self.direction = direction
         self.bounced = bounced
 
+
+class DivDirection:
+    def __init__(self, value):
+        self.value = value
+
+    def __eq__(self, other):
+        if isinstance(other, DivDirection):
+            return self.value == other.value
+        return 0
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+DivDirection.N = DivDirection(0)
+DivDirection.E = DivDirection(1)
+DivDirection.S = DivDirection(2)
+DivDirection.W = DivDirection(3)
+
+class Divider:
+    def __init__(self, box_color, x, y, direction):
+        self.box_color = box_color
+        self.x = x
+        self.y = y
+        self.direction = direction
+        self.box_progress = 1
+
 gameDimensions = Dimension(28, 20)
 gridSize = 25.0
 margin = 10
@@ -82,9 +108,13 @@ screenSize = Dimension(gameDimensions.width * gridSize + margin * 2, gameDimensi
 
 
 def setup():
-    global atoms
+    global atoms, dividers, covered_sections
 
     positions = []
+
+    dividers = []
+
+    covered_sections = []
 
     println("Screen: " + str(screenSize.width) + ", " + str(screenSize.height))
     size(screenSize.width, screenSize.height, P3D)
@@ -92,7 +122,7 @@ def setup():
     for i in range(level + 1):
         pos = getNewPos(positions)
         positions.append(pos)
-        dir = Direction(int(random(4)))
+        dir = BallDirection(int(random(4)))
         atoms.append(Atom(pos, dir))
 
 speed = 0.05
@@ -113,25 +143,25 @@ def bounceAtom(atom):
     
     direction = atom.direction
     if bounceRight:
-        direction = Direction.NW if direction == Direction.NE else Direction.SW
+        direction = BallDirection.NW if direction == BallDirection.NE else BallDirection.SW
     elif bounceLeft:
-        direction = Direction.NE if direction == Direction.NW else Direction.SE
+        direction = BallDirection.NE if direction == BallDirection.NW else BallDirection.SE
     if bounceTop:
-        direction = Direction.SE if direction == Direction.NE else Direction.SW
+        direction = BallDirection.SE if direction == BallDirection.NE else BallDirection.SW
     elif bounceBottom:
-        direction = Direction.NE if direction == Direction.SE else Direction.NW
+        direction = BallDirection.NE if direction == BallDirection.SE else BallDirection.NW
     
     return Atom(atom.position, direction, True) if direction != atom.direction else atom
 
 def moveAtom(atom):
-    if atom.direction == Direction.NE:
-        return bounceAtom(Atom(Point(atom.position.x + speed, atom.position.y - speed), Direction.NE))
-    elif atom.direction == Direction.SE:
-        return bounceAtom(Atom(Point(atom.position.x + speed, atom.position.y + speed), Direction.SE))
-    elif atom.direction == Direction.SW:
-        return bounceAtom(Atom(Point(atom.position.x - speed, atom.position.y + speed), Direction.SW))
-    elif atom.direction == Direction.NW:
-        return bounceAtom(Atom(Point(atom.position.x - speed, atom.position.y - speed), Direction.NW))
+    if atom.direction == BallDirection.NE:
+        return bounceAtom(Atom(Point(atom.position.x + speed, atom.position.y - speed), BallDirection.NE))
+    elif atom.direction == BallDirection.SE:
+        return bounceAtom(Atom(Point(atom.position.x + speed, atom.position.y + speed), BallDirection.SE))
+    elif atom.direction == BallDirection.SW:
+        return bounceAtom(Atom(Point(atom.position.x - speed, atom.position.y + speed), BallDirection.SW))
+    elif atom.direction == BallDirection.NW:
+        return bounceAtom(Atom(Point(atom.position.x - speed, atom.position.y - speed), BallDirection.NW))
     else:
         raise Exception('Unexpected value for direction: ' + str(atom.direction.value))
         
@@ -141,21 +171,29 @@ def distance(pos1, pos2):
 moving = True
 
 def mouseClicked():
+    global rects
+
     if mouseButton == LEFT:
-        global atoms
+        global atoms, dividers, covered_sections
 
         positions = []
 
+        dividers = []
+
         atoms = []
+
+        covered_sections = []
 
         for i in range(level + 1):
             pos = getNewPos(positions)
             positions.append(pos)
-            dir = Direction(int(random(4)))
+            dir = BallDirection(int(random(4)))
             atoms.append(Atom(pos, dir))
     
     if mouseButton == RIGHT:
-        pass
+        divider1 = Divider((255, 0, 0), mouseX, mouseY, DivDirection.N)
+        divider2 = Divider((0, 0, 255), mouseX, mouseY, DivDirection.S)
+        dividers.append([divider1, divider2])
 
 def draw():
     global atoms
@@ -186,6 +224,7 @@ def draw():
     atoms = map(moveAtom, atoms)
     
     # collision detection
+    # TODO: divider colision detection
     num = 1
     for i in range(len(atoms)):
         for j in range(i + 1, len(atoms)):
@@ -205,7 +244,7 @@ def draw():
                     moving = False
                     # the atoms are moving in opposite directions, determine if they should bounce it reverse directions or at right angles
                     println("Angle: atain((" + str(posi.y) + " - " +  str(posj.y) +") / (" + str(posi.x) + " - " +  str(posj.x) + ")) = " + str(angle))
-                    if atoms[i].direction == Direction.SE or atoms[j].direction == Direction.SE:
+                    if atoms[i].direction == BallDirection.SE or atoms[j].direction == BallDirection.SE:
                         if angle > 45 or angle < -67.5:
                             # glance bounce vertically
                             atoms[i] = Atom(atoms[i].position, atoms[i].direction.flipVertical())
@@ -246,3 +285,29 @@ def draw():
         textSize(32)
         text(str(atomNum), 32, 24)
         atomNum += 1
+
+    # divider logic
+    translate(0 - position.x, 0 - position.y, 0)
+    for divider in dividers:
+        for num in [0, 1]:
+            # check when to stop increasing progress
+            if divider[num].direction == DivDirection.N:
+                if divider[num].y - divider[num].box_progress + margin < 1:
+                    divider[num].box_color = (0, 0, 0)
+            elif divider[num].direction == DivDirection.S:
+                if divider[num].y + divider[num].box_progress + margin > screenSize.height:
+                    divider[num].box_color = (0, 0, 0)
+
+    # draw dividers
+    pushStyle()
+    stroke(0, 0, 0)
+    for divider in dividers:
+        for num in [0, 1]:
+            if divider[num].box_color != (0, 0, 0):
+                divider[num].box_progress += 3
+            fill(divider[num].box_color[0], divider[num].box_color[1], divider[num].box_color[2])
+            if divider[num].direction == DivDirection.S:
+                rect(divider[num].x, divider[num].y, 10, divider[num].box_progress)
+            elif divider[num].direction == DivDirection.N:
+                rect(divider[num].x, divider[num].y, 10, -divider[num].box_progress)
+    popStyle()
